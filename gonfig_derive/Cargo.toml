@@ -1,6 +1,6 @@
 [package]
 name = "gonfig_derive"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 authors = ["Vasanthkumar Kalaiselvan<itsparser@gmail.com>"]
 description = "Derive macros for the gonfig configuration management library"

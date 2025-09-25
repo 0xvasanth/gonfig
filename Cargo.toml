@@ -1,6 +1,6 @@
 [package]
 name = "gonfig"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 authors = ["Vasanthkumar Kalaiselvan<itsparser@gmail.com>"]
 description = "A unified configuration management library for Rust that seamlessly integrates environment variables, config files, and CLI arguments"
