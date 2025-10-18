@@ -97,7 +97,7 @@ fn main() -> gonfig::Result<()> {
             println!("   Runtime Connection: {:?}", config.runtime_connection);
             println!("   Internal Cache: {:?}", config.internal_cache);
         }
-        Err(e) => println!("❌ Error loading AppConfig: {}", e),
+        Err(e) => println!("❌ Error loading AppConfig: {e}"),
     }
 
     println!("\n2. Loading DatabaseConfig:");
@@ -115,7 +115,7 @@ fn main() -> gonfig::Result<()> {
             println!("\n   After setting password from secure vault:");
             println!("   Password: [SET FROM VAULT]");
         }
-        Err(e) => println!("❌ Error loading DatabaseConfig: {}", e),
+        Err(e) => println!("❌ Error loading DatabaseConfig: {e}"),
     }
 
     println!("\n3. Skip vs Include Comparison:");

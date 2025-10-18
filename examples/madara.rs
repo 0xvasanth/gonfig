@@ -44,7 +44,7 @@ fn main() -> gonfig::Result<()> {
     std::env::set_var("MDR_SERVER_WORKERS", "4");
 
     let config = Madara::from_gonfig()?;
-    println!("Loaded config from environment: {:#?}", config);
+    println!("Loaded config from environment: {config:#?}");
 
     let builder = ConfigBuilder::new()
         .with_merge_strategy(MergeStrategy::Deep)
@@ -63,14 +63,14 @@ fn main() -> gonfig::Result<()> {
 
     match builder.build::<Madara>() {
         Ok(config) => {
-            println!("\nValidated config: {:#?}", config);
+            println!("\nValidated config: {config:#?}");
             println!("\nMongo URI: {}", config.mongo.uri);
             println!("Server: {}:{}", config.server.host, config.server.port);
             if let Some(workers) = config.server.worker_threads {
-                println!("Workers: {}", workers);
+                println!("Workers: {workers}");
             }
         }
-        Err(e) => eprintln!("Config error: {}", e),
+        Err(e) => eprintln!("Config error: {e}"),
     }
 
     Ok(())

@@ -93,14 +93,14 @@ impl ConfigFormat {
     pub fn parse(&self, content: &str) -> Result<Value> {
         match self {
             ConfigFormat::Json => serde_json::from_str(content)
-                .map_err(|e| Error::Serialization(format!("JSON parse error: {}", e))),
+                .map_err(|e| Error::Serialization(format!("JSON parse error: {e}"))),
             ConfigFormat::Yaml => serde_yaml::from_str(content)
-                .map_err(|e| Error::Serialization(format!("YAML parse error: {}", e))),
+                .map_err(|e| Error::Serialization(format!("YAML parse error: {e}"))),
             ConfigFormat::Toml => {
                 let toml_value: toml::Value = toml::from_str(content)
-                    .map_err(|e| Error::Serialization(format!("TOML parse error: {}", e)))?;
+                    .map_err(|e| Error::Serialization(format!("TOML parse error: {e}")))?;
                 serde_json::to_value(toml_value).map_err(|e| {
-                    Error::Serialization(format!("TOML to JSON conversion error: {}", e))
+                    Error::Serialization(format!("TOML to JSON conversion error: {e}"))
                 })
             }
         }
@@ -165,7 +165,7 @@ impl Config {
             .extension()
             .and_then(|ext| ext.to_str())
             .and_then(ConfigFormat::from_extension)
-            .ok_or_else(|| Error::Config(format!("Unknown config format for file: {:?}", path)))?;
+            .ok_or_else(|| Error::Config(format!("Unknown config format for file: {path:?}")))?;
 
         let mut config = Self {
             path,
@@ -204,7 +204,7 @@ impl Config {
             .extension()
             .and_then(|ext| ext.to_str())
             .and_then(ConfigFormat::from_extension)
-            .ok_or_else(|| Error::Config(format!("Unknown config format for file: {:?}", path)))?;
+            .ok_or_else(|| Error::Config(format!("Unknown config format for file: {path:?}")))?;
 
         let path_display = path.display().to_string();
         let mut config = Self {
