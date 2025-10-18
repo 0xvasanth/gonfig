@@ -23,7 +23,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gonfig = "0.1"
+gonfig = "0.1.6"
 serde = { version = "1.0", features = ["derive"] }
 ```
 

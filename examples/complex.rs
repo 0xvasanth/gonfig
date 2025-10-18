@@ -85,12 +85,12 @@ fn main() -> gonfig::Result<()> {
                 );
             }
         }
-        Err(e) => eprintln!("Configuration error: {}", e),
+        Err(e) => eprintln!("Configuration error: {e}"),
     }
     println!("\nRaw merged configuration:");
     match serde_json::to_string_pretty(&value) {
-        Ok(json_str) => println!("{}", json_str),
-        Err(e) => eprintln!("Failed to serialize to JSON: {}", e),
+        Ok(json_str) => println!("{json_str}"),
+        Err(e) => eprintln!("Failed to serialize to JSON: {e}"),
     }
 
     Ok(())

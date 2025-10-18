@@ -90,7 +90,7 @@ fn main() -> gonfig::Result<()> {
             println!("\n2. After manual initialization of skipped fields:");
             print_app_config_with_skipped(&config);
         }
-        Err(e) => println!("❌ Error: {}", e),
+        Err(e) => println!("❌ Error: {e}"),
     }
 
     println!("\n3. Loading DatabaseConfig with selective skipping:");
@@ -107,7 +107,7 @@ fn main() -> gonfig::Result<()> {
             println!("   Password: [MANUALLY SET]");
             println!("   Pool: [MANUALLY INITIALIZED]");
         }
-        Err(e) => println!("❌ Database config error: {}", e),
+        Err(e) => println!("❌ Database config error: {e}"),
     }
 
     println!("\n4. Skip attribute use cases:");

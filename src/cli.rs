@@ -62,7 +62,7 @@ impl Cli {
         let app = T::parse();
 
         let json_value = serde_json::to_value(&app).map_err(|e| {
-            crate::error::Error::Serialization(format!("Failed to serialize clap args: {}", e))
+            crate::error::Error::Serialization(format!("Failed to serialize clap args: {e}"))
         })?;
 
         let mut parsed_values = HashMap::new();
