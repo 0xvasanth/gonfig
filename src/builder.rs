@@ -413,7 +413,7 @@ impl ConfigBuilder {
         }
 
         serde_json::from_value(merged)
-            .map_err(|e| Error::Serialization(format!("Failed to deserialize config: {}", e)))
+            .map_err(|e| Error::Serialization(format!("Failed to deserialize config: {e}")))
     }
 
     pub fn build_value(self) -> Result<Value> {

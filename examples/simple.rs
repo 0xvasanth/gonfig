@@ -27,7 +27,7 @@ fn main() -> gonfig::Result<()> {
             println!("Port: {}", config.port);
             println!("Debug: {}", config.debug);
         }
-        Err(e) => eprintln!("Error: {}", e),
+        Err(e) => eprintln!("Error: {e}"),
     }
 
     Ok(())

@@ -52,7 +52,7 @@ fn main() -> gonfig::Result<()> {
             println!("✅ Loaded config from environment:");
             print_madara_config(&config);
         }
-        Err(e) => println!("❌ Error: {}", e),
+        Err(e) => println!("❌ Error: {e}"),
     }
 
     println!("\n2. Loading with custom builder (advanced approach):");
@@ -104,14 +104,14 @@ fn main() -> gonfig::Result<()> {
             );
 
             if let Some(workers) = config.server.worker_threads {
-                println!("Worker Threads: {}", workers);
+                println!("Worker Threads: {workers}");
             }
 
             if let Some(timeout) = config.mongo.connection_timeout {
-                println!("Connection Timeout: {}s", timeout);
+                println!("Connection Timeout: {timeout}s");
             }
         }
-        Err(e) => println!("❌ Validation failed: {}", e),
+        Err(e) => println!("❌ Validation failed: {e}"),
     }
 
     println!("\n4. Testing different environment variable patterns:");
@@ -150,20 +150,20 @@ fn print_madara_config(config: &Madara) {
     println!("     URI: {}", config.mongo.uri);
     println!("     Database: {}", config.mongo.database);
     if let Some(timeout) = config.mongo.connection_timeout {
-        println!("     Timeout: {}s", timeout);
+        println!("     Timeout: {timeout}s");
     }
     if let Some(pool_size) = config.mongo.max_pool_size {
-        println!("     Pool Size: {}", pool_size);
+        println!("     Pool Size: {pool_size}");
     }
 
     println!("  🌐 Server:");
     println!("     Host: {}", config.server.host);
     println!("     Port: {}", config.server.port);
     if let Some(workers) = config.server.worker_threads {
-        println!("     Workers: {}", workers);
+        println!("     Workers: {workers}");
     }
     if let Some(cors) = config.server.enable_cors {
-        println!("     CORS: {}", cors);
+        println!("     CORS: {cors}");
     }
 }
 

@@ -50,6 +50,179 @@ struct GonfigField {
     default: Option<String>,
 }
 
+/// Derive macro for the `Gonfig` trait, enabling declarative configuration management.
+///
+/// This macro generates configuration loading methods for your struct, supporting multiple
+/// configuration sources: environment variables, CLI arguments, and configuration files.
+///
+/// # Generated Methods
+///
+/// The macro generates three public methods on your struct:
+///
+/// - `from_gonfig() -> Result<Self>` - Loads configuration from all enabled sources
+/// - `from_gonfig_with_builder(builder: ConfigBuilder) -> Result<Self>` - Advanced configuration with custom builder
+/// - `gonfig_builder() -> ConfigBuilder` - Returns a pre-configured builder for advanced use cases
+///
+/// # Container Attributes
+///
+/// ## `#[Gonfig(env_prefix = "PREFIX")]`
+/// Sets the prefix for environment variables. Field names are automatically uppercased and
+/// appended to the prefix.
+///
+/// **Example:**
+/// ```rust,ignore
+/// #[derive(Gonfig, Deserialize)]
+/// #[Gonfig(env_prefix = "APP")]
+/// struct Config {
+///     database_url: String,  // Environment variable: APP_DATABASE_URL
+///     port: u16,             // Environment variable: APP_PORT
+/// }
+/// ```
+///
+/// ## `#[Gonfig(allow_cli)]`
+/// Enables CLI argument parsing. Field names are converted to kebab-case.
+///
+/// **Example:**
+/// ```rust,ignore
+/// #[derive(Gonfig, Deserialize)]
+/// #[Gonfig(allow_cli)]
+/// struct Config {
+///     max_connections: u32,  // CLI argument: --max-connections
+/// }
+/// ```
+///
+/// ## `#[Gonfig(allow_config)]`
+/// Enables automatic config file loading. Checks for `config.toml`, `config.yaml`, or
+/// `config.json` in the current directory.
+///
+/// **Example:**
+/// ```rust,ignore
+/// #[derive(Gonfig, Deserialize)]
+/// #[Gonfig(allow_config)]
+/// struct Config {
+///     // Loads from config.toml, config.yaml, or config.json if present
+///     setting: String,
+/// }
+/// ```
+///
+/// # Field Attributes
+///
+/// ## `#[gonfig(env_name = "CUSTOM_NAME")]`
+/// Override the environment variable name for a specific field.
+///
+/// **Example:**
+/// ```rust,ignore
+/// #[derive(Gonfig, Deserialize)]
+/// #[Gonfig(env_prefix = "APP")]
+/// struct Config {
+///     #[gonfig(env_name = "DATABASE_CONNECTION_STRING")]
+///     database_url: String,  // Uses DATABASE_CONNECTION_STRING instead of APP_DATABASE_URL
+/// }
+/// ```
+///
+/// ## `#[gonfig(cli_name = "custom-name")]`
+/// Override the CLI argument name for a specific field.
+///
+/// **Example:**
+/// ```rust,ignore
+/// #[derive(Gonfig, Deserialize)]
+/// #[Gonfig(allow_cli)]
+/// struct Config {
+///     #[gonfig(cli_name = "db-url")]
+///     database_url: String,  // CLI argument: --db-url instead of --database-url
+/// }
+/// ```
+///
+/// ## `#[gonfig(default = "value")]`
+/// Specify a default value for a field. The value should be a JSON-compatible string.
+///
+/// **Example:**
+/// ```rust,ignore
+/// #[derive(Gonfig, Deserialize)]
+/// struct Config {
+///     #[gonfig(default = "8080")]
+///     port: u16,
+///
+///     #[gonfig(default = r#"["localhost"]"#)]
+///     allowed_hosts: Vec<String>,
+/// }
+/// ```
+///
+/// ## `#[skip]` or `#[skip_gonfig]`
+/// Exclude a field from configuration loading. Useful for non-serializable fields or
+/// fields that should only be set at runtime.
+///
+/// **Example:**
+/// ```rust,ignore
+/// #[derive(Gonfig, Deserialize)]
+/// struct Config {
+///     database_url: String,
+///
+///     #[skip]
+///     #[serde(skip)]
+///     runtime_data: Option<String>,  // Not loaded from config sources
+/// }
+/// ```
+///
+/// # Configuration Priority
+///
+/// Configuration sources are merged in the following priority order (later sources override earlier ones):
+///
+/// 1. Default values (from `#[gonfig(default)]` attributes)
+/// 2. Configuration files (if `allow_config` is set)
+/// 3. Environment variables (always enabled)
+/// 4. CLI arguments (if `allow_cli` is set)
+///
+/// # Complete Example
+///
+/// ```rust,ignore
+/// use gonfig::Gonfig;
+/// use serde::Deserialize;
+///
+/// #[derive(Debug, Deserialize, Gonfig)]
+/// #[Gonfig(env_prefix = "MYAPP", allow_cli, allow_config)]
+/// struct AppConfig {
+///     /// Database connection URL
+///     /// - Environment: MYAPP_DATABASE_URL
+///     /// - CLI: --database-url
+///     database_url: String,
+///
+///     /// Server port (default: 8080)
+///     /// - Environment: MYAPP_PORT
+///     /// - CLI: --port
+///     #[gonfig(default = "8080")]
+///     port: u16,
+///
+///     /// Custom environment variable name
+///     #[gonfig(env_name = "LOG_LEVEL")]
+///     log_level: String,
+///
+///     /// Runtime field (not loaded from config)
+///     #[skip]
+///     #[serde(skip)]
+///     start_time: Option<std::time::Instant>,
+/// }
+///
+/// fn main() -> gonfig::Result<()> {
+///     // Simple usage
+///     let config = AppConfig::from_gonfig()?;
+///
+///     // Advanced usage with custom builder
+///     let mut builder = AppConfig::gonfig_builder();
+///     builder = builder.with_file("custom.toml")?;
+///     let config = AppConfig::from_gonfig_with_builder(builder)?;
+///
+///     println!("Config: {:?}", config);
+///     Ok(())
+/// }
+/// ```
+///
+/// # Supported Attributes
+///
+/// - `gonfig` - Field-level attribute for configuration options
+/// - `skip_gonfig` - Field-level attribute to skip a field
+/// - `skip` - Alternative field-level skip attribute (compatible with serde)
+/// - `Gonfig` - Container-level attribute for struct-wide options
 #[proc_macro_derive(Gonfig, attributes(gonfig, skip_gonfig, skip, Gonfig))]
 pub fn derive_gonfig(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
