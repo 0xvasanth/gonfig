@@ -1,5 +1,6 @@
 use gonfig::Gonfig;
 use serde::{Deserialize, Serialize};
+use tracing_subscriber::EnvFilter;
 
 #[derive(Debug, Serialize, Deserialize, Gonfig)]
 #[Gonfig(allow_cli)]
@@ -30,57 +31,62 @@ pub struct Config {
 }
 
 fn main() -> gonfig::Result<()> {
-    println!("=== Your Configuration Management Example ===\n");
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
+        .init();
+
+    tracing::info!("=== Your Configuration Management Example ===\n");
 
     // Set up environment variables as expected by your design
     setup_environment_variables();
 
-    println!("1. Loading Config with hierarchical environment variables:");
+    tracing::info!("1. Loading Config with hierarchical environment variables:");
     match Config::from_gonfig() {
         Ok(config) => {
-            println!("✅ Successfully loaded configuration:");
+            tracing::info!("✅ Successfully loaded configuration:");
             print_config(&config);
         }
-        Err(e) => println!("❌ Error loading config: {e}"),
+        Err(e) => tracing::error!("❌ Error loading config: {e}"),
     }
 
-    println!("\n2. Testing individual component loading:");
+    tracing::info!("\n2. Testing individual component loading:");
 
     // Test Mongo component with CLI support
-    println!("Mongo configuration (supports CLI):");
+    tracing::info!("Mongo configuration (supports CLI):");
     std::env::set_var("MD_MONGO_USERNAME", "mongo_user");
     std::env::set_var("MD_MONGO_PASSWORD", "mongo_pass");
 
     match Mongo::from_gonfig() {
         Ok(mongo) => {
-            println!("  Username: {}", mongo.username);
-            println!("  Password: [REDACTED]");
+            tracing::info!("  Username: {}", mongo.username);
+            tracing::info!("  Password: [REDACTED]");
         }
-        Err(e) => println!("  Error: {e}"),
+        Err(e) => tracing::error!("  Error: {e}"),
     }
 
     // Test Application component
-    println!("\nApplication configuration:");
+    tracing::info!("\nApplication configuration:");
     match Application::from_gonfig() {
         Ok(app) => {
-            println!("  Username: {}", app.username);
-            println!("  Password: [REDACTED]");
-            println!("  Client: {:?} (skipped in gonfig)", app.client);
+            tracing::info!("  Username: {}", app.username);
+            tracing::info!("  Password: [REDACTED]");
+            tracing::info!("  Client: {:?} (skipped in gonfig)", app.client);
         }
-        Err(e) => println!("  Error: {e}"),
+        Err(e) => tracing::error!("  Error: {e}"),
     }
 
-    println!("\n3. Environment variable mapping demonstration:");
+    tracing::info!("\n3. Environment variable mapping demonstration:");
     show_environment_mapping();
 
-    println!("\n4. CLI argument demonstration:");
+    tracing::info!("\n4. CLI argument demonstration:");
     show_cli_mapping();
 
     Ok(())
 }
 
 fn setup_environment_variables() {
-    println!("Setting up environment variables with your expected pattern:");
+    tracing::info!("Setting up environment variables with your expected pattern:");
 
     // For Config struct with env_prefix="MD"
     std::env::set_var("MD_MONGO_USERNAME", "production_mongo_user");
@@ -88,52 +94,52 @@ fn setup_environment_variables() {
     std::env::set_var("MD_APP_USERNAME", "app_user");
     std::env::set_var("MD_APP_PASSWORD", "app_password");
 
-    println!("  MD_MONGO_USERNAME=production_mongo_user");
-    println!("  MD_MONGO_PASSWORD=super_secret_mongo_password");
-    println!("  MD_APP_USERNAME=app_user");
-    println!("  MD_APP_PASSWORD=app_password");
-    println!();
+    tracing::info!("  MD_MONGO_USERNAME=production_mongo_user");
+    tracing::info!("  MD_MONGO_PASSWORD=super_secret_mongo_password");
+    tracing::info!("  MD_APP_USERNAME=app_user");
+    tracing::info!("  MD_APP_PASSWORD=app_password");
+    tracing::info!("");
 }
 
 fn print_config(config: &Config) {
-    println!("📋 Complete Configuration:");
-    println!("  🗄️  MongoDB:");
-    println!("     Username: {}", config.mongo.username);
-    println!(
+    tracing::info!("📋 Complete Configuration:");
+    tracing::info!("  🗄️  MongoDB:");
+    tracing::info!("     Username: {}", config.mongo.username);
+    tracing::info!(
         "     Password: [REDACTED - {} chars]",
         config.mongo.password.len()
     );
 
-    println!("  📱 Application:");
-    println!("     Username: {}", config.app.username);
-    println!(
+    tracing::info!("  📱 Application:");
+    tracing::info!("     Username: {}", config.app.username);
+    tracing::info!(
         "     Password: [REDACTED - {} chars]",
         config.app.password.len()
     );
-    println!("     Client: {:?} (field skipped)", config.app.client);
+    tracing::info!("     Client: {:?} (field skipped)", config.app.client);
 }
 
 fn show_environment_mapping() {
-    println!("Environment variable naming patterns:");
-    println!("  Config struct has env_prefix='MD'");
-    println!("  └── mongo: Mongo");
-    println!("      ├── username → MD_MONGO_USERNAME");
-    println!("      └── password → MD_MONGO_PASSWORD");
-    println!("  └── app: Application");
-    println!("      ├── username → MD_APP_USERNAME");
-    println!("      ├── password → MD_APP_PASSWORD");
-    println!("      └── client → [skipped with #[skip_gonfig]]");
+    tracing::info!("Environment variable naming patterns:");
+    tracing::info!("  Config struct has env_prefix='MD'");
+    tracing::info!("  └── mongo: Mongo");
+    tracing::info!("      ├── username → MD_MONGO_USERNAME");
+    tracing::info!("      └── password → MD_MONGO_PASSWORD");
+    tracing::info!("  └── app: Application");
+    tracing::info!("      ├── username → MD_APP_USERNAME");
+    tracing::info!("      ├── password → MD_APP_PASSWORD");
+    tracing::info!("      └── client → [skipped with #[skip_gonfig]]");
 }
 
 fn show_cli_mapping() {
-    println!("CLI argument naming patterns:");
-    println!("  Mongo struct has allow_cli=true");
-    println!("  └── username → --mongo-username");
-    println!("  └── password → --mongo-password");
-    println!("  ");
-    println!("  Application struct (no CLI support)");
-    println!("  └── (CLI arguments not generated)");
-    println!();
-    println!("Example CLI usage:");
-    println!("  cargo run -- --mongo-username myuser --mongo-password mypass");
+    tracing::info!("CLI argument naming patterns:");
+    tracing::info!("  Mongo struct has allow_cli=true");
+    tracing::info!("  └── username → --mongo-username");
+    tracing::info!("  └── password → --mongo-password");
+    tracing::info!("  ");
+    tracing::info!("  Application struct (no CLI support)");
+    tracing::info!("  └── (CLI arguments not generated)");
+    tracing::info!("");
+    tracing::info!("Example CLI usage:");
+    tracing::info!("  cargo run -- --mongo-username myuser --mongo-password mypass");
 }

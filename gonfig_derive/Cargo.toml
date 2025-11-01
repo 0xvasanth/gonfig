@@ -2,12 +2,12 @@
 name = "gonfig_derive"
 version = "0.1.9"
 edition = "2021"
-authors = ["Vasanthkumar Kalaiselvan<itsparser@gmail.com>"]
+authors = ["Vasanthkumar Kalaiselvan<0xvasanth@gmail.com>"]
 description = "Derive macros for the gonfig configuration management library"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/itsparser/gonfig"
+repository = "https://github.com/0xvasanth/gonfig"
 documentation = "https://docs.rs/gonfig_derive"
-homepage = "https://github.com/itsparser/gonfig"
+homepage = "https://github.com/0xvasanth/gonfig"
 keywords = ["config", "configuration", "derive", "macro"]
 categories = ["config", "development-tools::procedural-macro-helpers"]
 

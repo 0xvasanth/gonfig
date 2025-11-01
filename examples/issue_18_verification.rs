@@ -2,6 +2,7 @@ use gonfig::{ConfigBuilder, ConfigFormat, Environment, MergeStrategy};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use tempfile::NamedTempFile;
+use tracing_subscriber::EnvFilter;
 
 /// Multi-level nested configuration structure
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -39,7 +40,12 @@ struct PoolConfig {
 }
 
 fn main() -> gonfig::Result<()> {
-    println!("=== Issue #18 Verification: Nested Environment Variable Override ===\n");
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
+        .init();
+
+    tracing::info!("=== Issue #18 Verification: Nested Environment Variable Override ===\n");
 
     // Create a temporary config file with nested values
     let mut config_file = NamedTempFile::new().expect("Failed to create temp file");
@@ -67,31 +73,35 @@ database:
     .expect("Failed to write config");
     config_file.flush().expect("Failed to flush");
 
-    println!("1. Loading configuration FROM FILE ONLY:");
-    println!("   Config file path: {:?}", config_file.path());
+    tracing::info!("1. Loading configuration FROM FILE ONLY:");
+    tracing::info!("   Config file path: {:?}", config_file.path());
 
     let config_file_only: AppConfig = ConfigBuilder::new()
         .with_merge_strategy(MergeStrategy::Deep)
         .with_file_format(config_file.path(), ConfigFormat::Yaml)?
         .build()?;
 
-    println!(
+    tracing::info!(
         "   Service: {} v{}",
-        config_file_only.service.name, config_file_only.service.version
+        config_file_only.service.name,
+        config_file_only.service.version
     );
-    println!(
+    tracing::info!(
         "   HTTP: {}:{} (timeout: {}s)",
-        config_file_only.http.host, config_file_only.http.port, config_file_only.http.timeout
+        config_file_only.http.host,
+        config_file_only.http.port,
+        config_file_only.http.timeout
     );
-    println!(
+    tracing::info!(
         "   Database: {}:{}/{}",
         config_file_only.database.host,
         config_file_only.database.port,
         config_file_only.database.name
     );
-    println!(
+    tracing::info!(
         "   Pool: min={}, max={}",
-        config_file_only.database.pool.minsize, config_file_only.database.pool.maxsize
+        config_file_only.database.pool.minsize,
+        config_file_only.database.pool.maxsize
     );
 
     // Verify file values
@@ -104,48 +114,54 @@ database:
         "File config should have maxsize 20"
     );
 
-    println!("\n2. Setting ENVIRONMENT VARIABLES to override nested values:");
+    tracing::info!("\n2. Setting ENVIRONMENT VARIABLES to override nested values:");
     std::env::set_var("APP_HTTP_PORT", "9000");
     std::env::set_var("APP_HTTP_TIMEOUT", "60");
     std::env::set_var("APP_DATABASE_POOL_MAXSIZE", "50");
     std::env::set_var("APP_DATABASE_NAME", "staging_db");
 
-    println!("   APP_HTTP_PORT=9000");
-    println!("   APP_HTTP_TIMEOUT=60");
-    println!("   APP_DATABASE_POOL_MAXSIZE=50");
-    println!("   APP_DATABASE_NAME=staging_db");
+    tracing::info!("   APP_HTTP_PORT=9000");
+    tracing::info!("   APP_HTTP_TIMEOUT=60");
+    tracing::info!("   APP_DATABASE_POOL_MAXSIZE=50");
+    tracing::info!("   APP_DATABASE_NAME=staging_db");
 
-    println!("\n3. Loading configuration WITH NESTED ENV OVERRIDE:");
+    tracing::info!("\n3. Loading configuration WITH NESTED ENV OVERRIDE:");
     let config_with_env: AppConfig = ConfigBuilder::new()
         .with_merge_strategy(MergeStrategy::Deep)
         .with_file_format(config_file.path(), ConfigFormat::Yaml)?
         .with_env_custom(Environment::new().with_prefix("APP").nested(true))
         .build()?;
 
-    println!(
+    tracing::info!(
         "   Service: {} v{}",
-        config_with_env.service.name, config_with_env.service.version
+        config_with_env.service.name,
+        config_with_env.service.version
     );
-    println!(
+    tracing::info!(
         "   HTTP: {}:{} (timeout: {}s)",
-        config_with_env.http.host, config_with_env.http.port, config_with_env.http.timeout
+        config_with_env.http.host,
+        config_with_env.http.port,
+        config_with_env.http.timeout
     );
-    println!(
+    tracing::info!(
         "   Database: {}:{}/{}",
-        config_with_env.database.host, config_with_env.database.port, config_with_env.database.name
+        config_with_env.database.host,
+        config_with_env.database.port,
+        config_with_env.database.name
     );
-    println!(
+    tracing::info!(
         "   Pool: min={}, max={}",
-        config_with_env.database.pool.minsize, config_with_env.database.pool.maxsize
+        config_with_env.database.pool.minsize,
+        config_with_env.database.pool.maxsize
     );
 
-    println!("\n4. VERIFICATION RESULTS:");
+    tracing::info!("\n4. VERIFICATION RESULTS:");
 
     // Critical assertion: env vars should override file values
     if config_with_env.http.port == 9000 {
-        println!("   ✅ PASS: HTTP port overridden by env (9000)");
+        tracing::info!("   ✅ PASS: HTTP port overridden by env (9000)");
     } else {
-        println!(
+        tracing::error!(
             "   ❌ FAIL: HTTP port NOT overridden (expected 9000, got {})",
             config_with_env.http.port
         );
@@ -153,9 +169,9 @@ database:
     }
 
     if config_with_env.http.timeout == 60 {
-        println!("   ✅ PASS: HTTP timeout overridden by env (60)");
+        tracing::info!("   ✅ PASS: HTTP timeout overridden by env (60)");
     } else {
-        println!(
+        tracing::error!(
             "   ❌ FAIL: HTTP timeout NOT overridden (expected 60, got {})",
             config_with_env.http.timeout
         );
@@ -163,9 +179,9 @@ database:
     }
 
     if config_with_env.database.pool.maxsize == 50 {
-        println!("   ✅ PASS: Database pool maxsize overridden by env (50)");
+        tracing::info!("   ✅ PASS: Database pool maxsize overridden by env (50)");
     } else {
-        println!(
+        tracing::error!(
             "   ❌ FAIL: Database pool maxsize NOT overridden (expected 50, got {})",
             config_with_env.database.pool.maxsize
         );
@@ -173,9 +189,9 @@ database:
     }
 
     if config_with_env.database.name == "staging_db" {
-        println!("   ✅ PASS: Database name overridden by env (staging_db)");
+        tracing::info!("   ✅ PASS: Database name overridden by env (staging_db)");
     } else {
-        println!(
+        tracing::error!(
             "   ❌ FAIL: Database name NOT overridden (expected staging_db, got {})",
             config_with_env.database.name
         );
@@ -191,9 +207,9 @@ database:
         config_with_env.service.name, "MyApp",
         "Non-overridden values should remain from file"
     );
-    println!("   ✅ PASS: Non-overridden values preserved from config file");
+    tracing::info!("   ✅ PASS: Non-overridden values preserved from config file");
 
-    println!("\n5. Testing WITHOUT nested mode (backward compatibility):");
+    tracing::info!("\n5. Testing WITHOUT nested mode (backward compatibility):");
     let config_flat: Result<AppConfig, _> = ConfigBuilder::new()
         .with_merge_strategy(MergeStrategy::Deep)
         .with_file_format(config_file.path(), ConfigFormat::Yaml)?
@@ -202,26 +218,26 @@ database:
 
     match config_flat {
         Ok(cfg) => {
-            println!("   Config loaded with nested=false");
-            println!(
+            tracing::info!("   Config loaded with nested=false");
+            tracing::info!(
                 "   HTTP port: {} (should be from file: 3000)",
                 cfg.http.port
             );
             if cfg.http.port == 3000 {
-                println!(
+                tracing::info!(
                     "   ✅ PASS: Backward compatibility maintained - nested=false keeps flat keys"
                 );
             }
         }
         Err(e) => {
-            println!("   Note: Config might fail without nested mode (expected): {e}");
+            tracing::info!("   Note: Config might fail without nested mode (expected): {e}");
         }
     }
 
-    println!("\n=== CONCLUSION ===");
-    println!("✅ Issue #18 is FIXED!");
-    println!("   Environment variables now properly override nested config file values");
-    println!("   when using .nested(true) with Deep merge strategy.");
+    tracing::info!("\n=== CONCLUSION ===");
+    tracing::info!("✅ Issue #18 is FIXED!");
+    tracing::info!("   Environment variables now properly override nested config file values");
+    tracing::info!("   when using .nested(true) with Deep merge strategy.");
 
     // Clean up
     std::env::remove_var("APP_HTTP_PORT");

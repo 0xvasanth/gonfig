@@ -31,6 +31,7 @@ path = "gonfig_derive"
 tempfile = "3.10"
 pretty_assertions = "1.4"
 rusty-hook = "^0.11.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
 [workspace]
 members = ["gonfig_derive"]

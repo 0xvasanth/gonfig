@@ -1,5 +1,6 @@
 use gonfig::{ConfigBuilder, Gonfig, MergeStrategy};
 use serde::{Deserialize, Serialize};
+use tracing_subscriber::EnvFilter;
 
 #[derive(Debug, Serialize, Deserialize, Gonfig)]
 #[Gonfig(allow_cli, env_prefix = "MDR")]
@@ -41,21 +42,26 @@ struct ServerConfig {
 }
 
 fn main() -> gonfig::Result<()> {
-    println!("=== Madara Configuration Management Demo ===\n");
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
+        .init();
+
+    tracing::info!("=== Madara Configuration Management Demo ===\n");
 
     // Set up environment variables as they would be in production
     setup_environment_variables();
 
-    println!("1. Loading with derive macro (simple approach):");
+    tracing::info!("1. Loading with derive macro (simple approach):");
     match Madara::from_gonfig() {
         Ok(config) => {
-            println!("✅ Loaded config from environment:");
+            tracing::info!("✅ Loaded config from environment:");
             print_madara_config(&config);
         }
-        Err(e) => println!("❌ Error: {e}"),
+        Err(e) => tracing::error!("❌ Error: {e}"),
     }
 
-    println!("\n2. Loading with custom builder (advanced approach):");
+    tracing::info!("\n2. Loading with custom builder (advanced approach):");
     let builder = ConfigBuilder::new()
         .with_merge_strategy(MergeStrategy::Deep)
         .with_env("MDR")
@@ -92,36 +98,37 @@ fn main() -> gonfig::Result<()> {
 
     match builder.build::<Madara>() {
         Ok(config) => {
-            println!("✅ Validated config:");
+            tracing::info!("✅ Validated config:");
             print_madara_config(&config);
 
-            println!("\n3. Individual component access:");
-            println!("MongoDB Connection: {}", config.mongo.uri);
-            println!("Database: {}", config.mongo.database);
-            println!(
+            tracing::info!("\n3. Individual component access:");
+            tracing::info!("MongoDB Connection: {}", config.mongo.uri);
+            tracing::info!("Database: {}", config.mongo.database);
+            tracing::info!(
                 "Server Address: {}:{}",
-                config.server.host, config.server.port
+                config.server.host,
+                config.server.port
             );
 
             if let Some(workers) = config.server.worker_threads {
-                println!("Worker Threads: {workers}");
+                tracing::info!("Worker Threads: {workers}");
             }
 
             if let Some(timeout) = config.mongo.connection_timeout {
-                println!("Connection Timeout: {timeout}s");
+                tracing::info!("Connection Timeout: {timeout}s");
             }
         }
-        Err(e) => println!("❌ Validation failed: {e}"),
+        Err(e) => tracing::error!("❌ Validation failed: {e}"),
     }
 
-    println!("\n4. Testing different environment variable patterns:");
+    tracing::info!("\n4. Testing different environment variable patterns:");
     test_environment_patterns();
 
     Ok(())
 }
 
 fn setup_environment_variables() {
-    println!("Setting up environment variables with Madara pattern:");
+    tracing::info!("Setting up environment variables with Madara pattern:");
 
     // MDR prefix + component override
     std::env::set_var("MADARA_MONGO_URI", "mongodb://localhost:27017");
@@ -135,56 +142,58 @@ fn setup_environment_variables() {
     std::env::set_var("WORKERS", "4"); // Override name
     std::env::set_var("MADARA_SERVER_ENABLE_CORS", "true");
 
-    println!("  MADARA_MONGO_URI=mongodb://localhost:27017");
-    println!("  MADARA_MONGO_DATABASE=madara_production");
-    println!("  MADARA_MONGO_CONNECTION_TIMEOUT=30");
-    println!("  MADARA_SERVER_HOST=0.0.0.0");
-    println!("  MADARA_SERVER_PORT=8080");
-    println!("  WORKERS=4  # (field override)");
-    println!();
+    tracing::info!("  MADARA_MONGO_URI=mongodb://localhost:27017");
+    tracing::info!("  MADARA_MONGO_DATABASE=madara_production");
+    tracing::info!("  MADARA_MONGO_CONNECTION_TIMEOUT=30");
+    tracing::info!("  MADARA_SERVER_HOST=0.0.0.0");
+    tracing::info!("  MADARA_SERVER_PORT=8080");
+    tracing::info!("  WORKERS=4  # (field override)");
+    tracing::info!("");
 }
 
 fn print_madara_config(config: &Madara) {
-    println!("📋 Madara Configuration:");
-    println!("  🗄️  MongoDB:");
-    println!("     URI: {}", config.mongo.uri);
-    println!("     Database: {}", config.mongo.database);
+    tracing::info!("📋 Madara Configuration:");
+    tracing::info!("  🗄️  MongoDB:");
+    tracing::info!("     URI: {}", config.mongo.uri);
+    tracing::info!("     Database: {}", config.mongo.database);
     if let Some(timeout) = config.mongo.connection_timeout {
-        println!("     Timeout: {timeout}s");
+        tracing::info!("     Timeout: {timeout}s");
     }
     if let Some(pool_size) = config.mongo.max_pool_size {
-        println!("     Pool Size: {pool_size}");
+        tracing::info!("     Pool Size: {pool_size}");
     }
 
-    println!("  🌐 Server:");
-    println!("     Host: {}", config.server.host);
-    println!("     Port: {}", config.server.port);
+    tracing::info!("  🌐 Server:");
+    tracing::info!("     Host: {}", config.server.host);
+    tracing::info!("     Port: {}", config.server.port);
     if let Some(workers) = config.server.worker_threads {
-        println!("     Workers: {workers}");
+        tracing::info!("     Workers: {workers}");
     }
     if let Some(cors) = config.server.enable_cors {
-        println!("     CORS: {cors}");
+        tracing::info!("     CORS: {cors}");
     }
 }
 
 fn test_environment_patterns() {
-    println!("Testing different prefix patterns:");
+    tracing::info!("Testing different prefix patterns:");
 
     // Test case 1: Standard hierarchy
     std::env::set_var("TEST_MADARA_MONGO_URI", "mongodb://test1:27017");
-    println!("  TEST_MADARA_MONGO_URI → hierarchical structure");
+    tracing::info!("  TEST_MADARA_MONGO_URI → hierarchical structure");
 
     // Test case 2: Field override
     std::env::set_var("CUSTOM_MONGO_URI", "mongodb://test2:27017");
-    println!("  CUSTOM_MONGO_URI → field name override");
+    tracing::info!("  CUSTOM_MONGO_URI → field name override");
 
     // Test case 3: Nested structure
     std::env::set_var("APP_DATABASE_CONFIG_HOST", "test.db.com");
-    println!("  APP_DATABASE_CONFIG_HOST → nested configuration");
+    tracing::info!("  APP_DATABASE_CONFIG_HOST → nested configuration");
 
-    println!("\nPrefix resolution examples:");
-    println!("  With prefix 'MDR' and struct 'Madara':");
-    println!("    field 'mongo.uri' → MDR_MADARA_MONGO_URI");
-    println!("    field with env_name='CUSTOM' → CUSTOM");
-    println!("    nested field 'mongo.connection_timeout' → MDR_MADARA_MONGO_CONNECTION_TIMEOUT");
+    tracing::info!("\nPrefix resolution examples:");
+    tracing::info!("  With prefix 'MDR' and struct 'Madara':");
+    tracing::info!("    field 'mongo.uri' → MDR_MADARA_MONGO_URI");
+    tracing::info!("    field with env_name='CUSTOM' → CUSTOM");
+    tracing::info!(
+        "    nested field 'mongo.connection_timeout' → MDR_MADARA_MONGO_CONNECTION_TIMEOUT"
+    );
 }

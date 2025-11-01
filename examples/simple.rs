@@ -1,5 +1,6 @@
 use gonfig::{ConfigBuilder, Environment, MergeStrategy};
 use serde::{Deserialize, Serialize};
+use tracing_subscriber::EnvFilter;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct SimpleConfig {
@@ -9,6 +10,11 @@ struct SimpleConfig {
 }
 
 fn main() -> gonfig::Result<()> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
+        .init();
+
     // For this manual approach, we need flat naming
     std::env::set_var("APP_NAME", "Gonfig Test");
     std::env::set_var("APP_PORT", "8080");
@@ -22,12 +28,12 @@ fn main() -> gonfig::Result<()> {
 
     match builder.build::<SimpleConfig>() {
         Ok(config) => {
-            println!("Configuration loaded successfully:");
-            println!("Name: {}", config.name);
-            println!("Port: {}", config.port);
-            println!("Debug: {}", config.debug);
+            tracing::info!("Configuration loaded successfully:");
+            tracing::info!("Name: {}", config.name);
+            tracing::info!("Port: {}", config.port);
+            tracing::info!("Debug: {}", config.debug);
         }
-        Err(e) => eprintln!("Error: {e}"),
+        Err(e) => tracing::error!("Error: {e}"),
     }
 
     Ok(())

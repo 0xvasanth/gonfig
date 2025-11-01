@@ -1,6 +1,7 @@
 use gonfig::Gonfig;
 use serde::{Deserialize, Serialize};
 use std::env;
+use tracing_subscriber::EnvFilter;
 
 // Simple example demonstrating default values feature
 
@@ -24,17 +25,22 @@ pub struct AppConfig {
 }
 
 fn main() -> gonfig::Result<()> {
-    println!("=== Simple Default Values Example ===\n");
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
+        .init();
+
+    tracing::info!("=== Simple Default Values Example ===\n");
 
     // Example 1: Using all defaults (no env vars set)
-    println!("1. Configuration with all defaults:");
+    tracing::info!("1. Configuration with all defaults:");
     cleanup_env_vars();
 
     let config = AppConfig::from_gonfig()?;
     print_config(&config);
 
     // Example 2: Override some values
-    println!("\n2. Override some values with environment:");
+    tracing::info!("\n2. Override some values with environment:");
     env::set_var("APP_NAME", "production-app");
     env::set_var("APP_PORT", "3000");
     env::set_var("APP_DEBUG", "true");
@@ -47,11 +53,11 @@ fn main() -> gonfig::Result<()> {
 }
 
 fn print_config(config: &AppConfig) {
-    println!("   Name: {}", config.name);
-    println!("   Port: {}", config.port);
-    println!("   Debug: {}", config.debug);
-    println!("   Max Connections: {}", config.max_connections);
-    println!("   Timeout: {} seconds", config.timeout_seconds);
+    tracing::info!("   Name: {}", config.name);
+    tracing::info!("   Port: {}", config.port);
+    tracing::info!("   Debug: {}", config.debug);
+    tracing::info!("   Max Connections: {}", config.max_connections);
+    tracing::info!("   Timeout: {} seconds", config.timeout_seconds);
 }
 
 fn cleanup_env_vars() {

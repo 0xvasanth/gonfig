@@ -1,6 +1,7 @@
 use gonfig::{ConfigBuilder, Environment, MergeStrategy};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use tracing_subscriber::EnvFilter;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct AppConfig {
@@ -28,6 +29,11 @@ struct DatabaseConfig {
 }
 
 fn main() -> gonfig::Result<()> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
+        .init();
+
     std::env::set_var("APP_APP_NAME", "MyApp");
     std::env::set_var("APP_VERSION", "2.0.0");
     std::env::set_var("APP_FEATURES_AUTH_ENABLED", "true");
@@ -67,30 +73,33 @@ fn main() -> gonfig::Result<()> {
 
     match serde_json::from_value::<AppConfig>(value.clone()) {
         Ok(config) => {
-            println!("Loaded configuration:");
-            println!("App: {} v{}", config.app_name, config.version);
-            println!("\nFeatures:");
-            println!("  Auth enabled: {}", config.features.auth_enabled);
-            println!("  Rate limiting: {}", config.features.rate_limiting);
-            println!(
+            tracing::info!("Loaded configuration:");
+            tracing::info!("App: {} v{}", config.app_name, config.version);
+            tracing::info!("\nFeatures:");
+            tracing::info!("  Auth enabled: {}", config.features.auth_enabled);
+            tracing::info!("  Rate limiting: {}", config.features.rate_limiting);
+            tracing::info!(
                 "  Max requests/min: {}",
                 config.features.max_requests_per_minute
             );
 
-            println!("\nDatabases:");
+            tracing::info!("\nDatabases:");
             for (name, db) in &config.databases {
-                println!(
+                tracing::info!(
                     "  {}: {}:{} (user: {})",
-                    name, db.host, db.port, db.username
+                    name,
+                    db.host,
+                    db.port,
+                    db.username
                 );
             }
         }
-        Err(e) => eprintln!("Configuration error: {e}"),
+        Err(e) => tracing::error!("Configuration error: {e}"),
     }
-    println!("\nRaw merged configuration:");
+    tracing::info!("\nRaw merged configuration:");
     match serde_json::to_string_pretty(&value) {
-        Ok(json_str) => println!("{json_str}"),
-        Err(e) => eprintln!("Failed to serialize to JSON: {e}"),
+        Ok(json_str) => tracing::info!("{json_str}"),
+        Err(e) => tracing::error!("Failed to serialize to JSON: {e}"),
     }
 
     Ok(())

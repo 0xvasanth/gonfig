@@ -1,5 +1,6 @@
 use gonfig::{ConfigBuilder, Gonfig, MergeStrategy};
 use serde::{Deserialize, Serialize};
+use tracing_subscriber::EnvFilter;
 
 #[derive(Debug, Serialize, Deserialize, Gonfig)]
 #[Gonfig(allow_cli, env_prefix = "MDR")]
@@ -37,6 +38,11 @@ struct ServerConfig {
 }
 
 fn main() -> gonfig::Result<()> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
+        .init();
+
     std::env::set_var("MDR_MONGO_URI", "mongodb://localhost:27017");
     std::env::set_var("MDR_MONGO_DATABASE", "madara_db");
     std::env::set_var("MDR_SERVER_HOST", "0.0.0.0");
@@ -44,7 +50,7 @@ fn main() -> gonfig::Result<()> {
     std::env::set_var("MDR_SERVER_WORKERS", "4");
 
     let config = Madara::from_gonfig()?;
-    println!("Loaded config from environment: {config:#?}");
+    tracing::info!("Loaded config from environment: {config:#?}");
 
     let builder = ConfigBuilder::new()
         .with_merge_strategy(MergeStrategy::Deep)
@@ -63,14 +69,14 @@ fn main() -> gonfig::Result<()> {
 
     match builder.build::<Madara>() {
         Ok(config) => {
-            println!("\nValidated config: {config:#?}");
-            println!("\nMongo URI: {}", config.mongo.uri);
-            println!("Server: {}:{}", config.server.host, config.server.port);
+            tracing::info!("\nValidated config: {config:#?}");
+            tracing::info!("\nMongo URI: {}", config.mongo.uri);
+            tracing::info!("Server: {}:{}", config.server.host, config.server.port);
             if let Some(workers) = config.server.worker_threads {
-                println!("Workers: {workers}");
+                tracing::info!("Workers: {workers}");
             }
         }
-        Err(e) => eprintln!("Config error: {e}"),
+        Err(e) => tracing::error!("Config error: {e}"),
     }
 
     Ok(())

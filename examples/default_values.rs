@@ -7,6 +7,7 @@
 use gonfig::Gonfig;
 use serde::{Deserialize, Serialize};
 use std::env;
+use tracing_subscriber::EnvFilter;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Gonfig)]
 #[Gonfig(env_prefix = "APP")]
@@ -47,13 +48,18 @@ pub struct DatabaseConfig {
 }
 
 fn main() -> gonfig::Result<()> {
-    println!("=== Gonfig Default Values Feature Demo ===\n");
-    println!("This example demonstrates the new default value feature");
-    println!("requested in GitHub issue #1\n");
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
+        .init();
+
+    tracing::info!("=== Gonfig Default Values Feature Demo ===\n");
+    tracing::info!("This example demonstrates the new default value feature");
+    tracing::info!("requested in GitHub issue #1\n");
 
     // Scenario 1: All defaults
-    println!("1. Using all default values:");
-    println!("   (No environment variables set except required nested struct fields)\n");
+    tracing::info!("1. Using all default values:");
+    tracing::info!("   (No environment variables set except required nested struct fields)\n");
 
     // Clean environment
     cleanup_env();
@@ -68,8 +74,8 @@ fn main() -> gonfig::Result<()> {
     print_config(&config);
 
     // Scenario 2: Mix of defaults and environment variables
-    println!("\n2. Overriding some values with environment variables:");
-    println!("   Setting: APP_NAME=production-api, PORT=3000, DB_NAME=prod_db\n");
+    tracing::info!("\n2. Overriding some values with environment variables:");
+    tracing::info!("   Setting: APP_NAME=production-api, PORT=3000, DB_NAME=prod_db\n");
 
     env::set_var("APP_NAME", "production-api");
     env::set_var("PORT", "3000");
@@ -79,35 +85,35 @@ fn main() -> gonfig::Result<()> {
     print_config(&config);
 
     // Scenario 3: Debug mode enabled
-    println!("\n3. Enabling debug mode:");
-    println!("   Setting: DEBUG=true\n");
+    tracing::info!("\n3. Enabling debug mode:");
+    tracing::info!("   Setting: DEBUG=true\n");
 
     env::set_var("DEBUG", "true");
 
     let config = AppConfig::from_gonfig()?;
     print_config(&config);
 
-    println!("\n✅ Default values feature is working correctly!");
-    println!("\nBenefits of this feature:");
-    println!("• Reduces boilerplate - no need to manually check and set defaults");
-    println!("• Makes configuration more declarative and self-documenting");
-    println!("• Provides sensible defaults for development environments");
-    println!("• Maintains backward compatibility with existing code");
+    tracing::info!("\n✅ Default values feature is working correctly!");
+    tracing::info!("\nBenefits of this feature:");
+    tracing::info!("• Reduces boilerplate - no need to manually check and set defaults");
+    tracing::info!("• Makes configuration more declarative and self-documenting");
+    tracing::info!("• Provides sensible defaults for development environments");
+    tracing::info!("• Maintains backward compatibility with existing code");
 
     cleanup_env();
     Ok(())
 }
 
 fn print_config(config: &AppConfig) {
-    println!("   App Configuration:");
-    println!("     Name: {}", config.name);
-    println!("     Port: {}", config.port);
-    println!("     Debug: {}", config.debug);
-    println!("   Database Configuration:");
-    println!("     Host: {}", config.database.host);
-    println!("     Port: {}", config.database.port);
-    println!("     Pool Size: {}", config.database.pool_size);
-    println!(
+    tracing::info!("   App Configuration:");
+    tracing::info!("     Name: {}", config.name);
+    tracing::info!("     Port: {}", config.port);
+    tracing::info!("     Debug: {}", config.debug);
+    tracing::info!("   Database Configuration:");
+    tracing::info!("     Host: {}", config.database.host);
+    tracing::info!("     Port: {}", config.database.port);
+    tracing::info!("     Pool Size: {}", config.database.pool_size);
+    tracing::info!(
         "     Database Name: {}",
         config.database.name.as_deref().unwrap_or("<not set>")
     );

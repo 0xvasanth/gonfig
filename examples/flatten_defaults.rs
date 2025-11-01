@@ -1,6 +1,7 @@
 use gonfig::{ConfigBuilder, Gonfig};
 use serde::{Deserialize, Serialize};
 use std::env;
+use tracing_subscriber::EnvFilter;
 
 // Example: Service Configuration with Defaults
 // This demonstrates the default value feature requested in issue #1
@@ -86,17 +87,22 @@ pub struct QueueConfig {
 }
 
 fn main() -> gonfig::Result<()> {
-    println!("=== Service Configuration with Defaults ===\n");
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
+        .init();
+
+    tracing::info!("=== Service Configuration with Defaults ===\n");
 
     // Example 1: Using all defaults
-    println!("1. Configuration with all default values:");
-    println!("   (No environment variables set)\n");
+    tracing::info!("1. Configuration with all default values:");
+    tracing::info!("   (No environment variables set)\n");
 
     let config_defaults = OrchestratorConfig::from_gonfig()?;
     print_config(&config_defaults);
 
     // Example 2: Override some values with environment variables
-    println!("\n2. Configuration with some environment overrides:");
+    tracing::info!("\n2. Configuration with some environment overrides:");
 
     // Set some production values
     env::set_var("DB_HOST", "prod-db.example.com");
@@ -112,7 +118,7 @@ fn main() -> gonfig::Result<()> {
     print_config(&config_prod);
 
     // Example 3: Using builder with custom defaults
-    println!("\n3. Using ConfigBuilder with custom defaults:");
+    tracing::info!("\n3. Using ConfigBuilder with custom defaults:");
 
     // Clean up env vars for this example
     cleanup_env_vars();
@@ -135,10 +141,10 @@ fn main() -> gonfig::Result<()> {
     print_config(&config_custom);
 
     // Example 4: Migration scenario - show how flatten makes env vars more intuitive
-    println!("\n4. Migration Example - Intuitive Environment Variables:");
-    println!("   Before (without flatten): ORCHESTRATOR_DATABASE_HOST=prod.db.com");
-    println!("   After (with flatten):    DB_HOST=prod.db.com");
-    println!("\n   This makes migration from other config libraries much easier!");
+    tracing::info!("\n4. Migration Example - Intuitive Environment Variables:");
+    tracing::info!("   Before (without flatten): ORCHESTRATOR_DATABASE_HOST=prod.db.com");
+    tracing::info!("   After (with flatten):    DB_HOST=prod.db.com");
+    tracing::info!("\n   This makes migration from other config libraries much easier!");
 
     cleanup_env_vars();
 
@@ -146,33 +152,33 @@ fn main() -> gonfig::Result<()> {
 }
 
 fn print_config(config: &OrchestratorConfig) {
-    println!("   Service: {}", config.service_name);
-    println!("   Max Batch Size: {}", config.max_batch_size);
-    println!("   Metrics Enabled: {}", config.enable_metrics);
-    println!("   ");
-    println!("   Database Configuration:");
-    println!("     Host: {}", config.database.host);
-    println!("     Port: {}", config.database.port);
-    println!("     Database: {}", config.database.database);
-    println!("     User: {}", config.database.user);
-    println!(
+    tracing::info!("   Service: {}", config.service_name);
+    tracing::info!("   Max Batch Size: {}", config.max_batch_size);
+    tracing::info!("   Metrics Enabled: {}", config.enable_metrics);
+    tracing::info!("   ");
+    tracing::info!("   Database Configuration:");
+    tracing::info!("     Host: {}", config.database.host);
+    tracing::info!("     Port: {}", config.database.port);
+    tracing::info!("     Database: {}", config.database.database);
+    tracing::info!("     User: {}", config.database.user);
+    tracing::info!(
         "     Password: {}",
         config.database.password.as_deref().unwrap_or("<not set>")
     );
-    println!("     Pool Size: {}", config.database.pool_size);
-    println!("   ");
-    println!("   Server Configuration:");
-    println!("     Host: {}", config.server.host);
-    println!("     Port: {}", config.server.port);
-    println!("     Workers: {}", config.server.worker_threads);
-    println!("     Max Connections: {}", config.server.max_connections);
-    println!("     TLS Enabled: {}", config.server.enable_tls);
-    println!("   ");
-    println!("   Queue Configuration:");
-    println!("     URL: {}", config.queue.url);
-    println!("     Max Retries: {}", config.queue.max_retries);
-    println!("     Retry Delay: {}ms", config.queue.retry_delay_ms);
-    println!("     Batch Size: {}", config.queue.batch_size);
+    tracing::info!("     Pool Size: {}", config.database.pool_size);
+    tracing::info!("   ");
+    tracing::info!("   Server Configuration:");
+    tracing::info!("     Host: {}", config.server.host);
+    tracing::info!("     Port: {}", config.server.port);
+    tracing::info!("     Workers: {}", config.server.worker_threads);
+    tracing::info!("     Max Connections: {}", config.server.max_connections);
+    tracing::info!("     TLS Enabled: {}", config.server.enable_tls);
+    tracing::info!("   ");
+    tracing::info!("   Queue Configuration:");
+    tracing::info!("     URL: {}", config.queue.url);
+    tracing::info!("     Max Retries: {}", config.queue.max_retries);
+    tracing::info!("     Retry Delay: {}ms", config.queue.retry_delay_ms);
+    tracing::info!("     Batch Size: {}", config.queue.batch_size);
 }
 
 fn cleanup_env_vars() {
