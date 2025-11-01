@@ -2,12 +2,12 @@
 name = "gonfig"
 version = "0.1.7"
 edition = "2021"
-authors = ["Vasanthkumar Kalaiselvan<itsparser@gmail.com>"]
+authors = ["Vasanthkumar Kalaiselvan<0xvasanth@gmail.com>"]
 description = "A unified configuration management library for Rust that seamlessly integrates environment variables, config files, and CLI arguments"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/itsparser/gonfig"
+repository = "https://github.com/0xvasanth/gonfig"
 documentation = "https://docs.rs/gonfig"
-homepage = "https://github.com/itsparser/gonfig"
+homepage = "https://github.com/0xvasanth/gonfig"
 readme = "README.md"
 keywords = ["config", "configuration", "cli", "environment", "settings"]
 categories = ["config", "command-line-interface"]
