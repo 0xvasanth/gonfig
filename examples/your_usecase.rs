@@ -41,7 +41,7 @@ fn main() -> gonfig::Result<()> {
             println!("✅ Successfully loaded configuration:");
             print_config(&config);
         }
-        Err(e) => println!("❌ Error loading config: {}", e),
+        Err(e) => println!("❌ Error loading config: {e}"),
     }
 
     println!("\n2. Testing individual component loading:");
@@ -56,7 +56,7 @@ fn main() -> gonfig::Result<()> {
             println!("  Username: {}", mongo.username);
             println!("  Password: [REDACTED]");
         }
-        Err(e) => println!("  Error: {}", e),
+        Err(e) => println!("  Error: {e}"),
     }
 
     // Test Application component
@@ -67,7 +67,7 @@ fn main() -> gonfig::Result<()> {
             println!("  Password: [REDACTED]");
             println!("  Client: {:?} (skipped in gonfig)", app.client);
         }
-        Err(e) => println!("  Error: {}", e),
+        Err(e) => println!("  Error: {e}"),
     }
 
     println!("\n3. Environment variable mapping demonstration:");
