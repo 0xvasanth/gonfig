@@ -198,7 +198,7 @@ impl Environment {
 
     /// Enable nested mode to convert flat environment variable keys into nested structures.
     ///
-    /// When enabled, environment variables with separators (default: `_`) will be split
+    /// When enabled, environment variables with the configured separator (default: `_`) will be split
     /// into nested paths. For example, `APP_HTTP_PORT=9000` becomes `{"http": {"port": 9000}}`.
     ///
     /// This is essential for properly overriding nested configuration file values with
