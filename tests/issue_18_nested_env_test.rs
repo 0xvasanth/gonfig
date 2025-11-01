@@ -248,7 +248,7 @@ database:
         .build()?;
 
     // With nested=false, env var won't override nested config value
-    // because flat key "http_port" != nested path "http.port"
+    // because the environment variable "APP_HTTP_PORT" is interpreted as the flat key "http_port", which does not match the expected nested path "http.port" in the config structure
     assert_eq!(
         config.http.port, 3000,
         "Port should remain from file when nested=false"
