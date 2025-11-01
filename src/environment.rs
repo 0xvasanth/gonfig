@@ -239,6 +239,18 @@ impl Environment {
         }
     }
 
+    /// Normalize a key for storage in the flat map based on nested mode setting.
+    ///
+    /// In nested mode, preserves the original case for proper splitting.
+    /// In flat mode, converts to lowercase for backward compatibility.
+    fn normalize_key(&self, key: &str) -> String {
+        if self.nested {
+            key.to_string()
+        } else {
+            key.to_lowercase()
+        }
+    }
+
     fn parse_env_value(value: &str) -> Value {
         if let Ok(b) = value.parse::<bool>() {
             return json!(b);
@@ -272,19 +284,19 @@ impl Environment {
     /// This helper function takes a flat key path (e.g., ["http", "server", "port"])
     /// and creates the necessary nested structure in the map, inserting the value
     /// at the deepest level.
-    fn insert_nested(map: &mut Map<String, Value>, parts: &[&str], value: Value) {
+    fn insert_nested(map: &mut Map<String, Value>, parts: &[String], value: Value) {
         if parts.is_empty() {
             return;
         }
 
         if parts.len() == 1 {
             // Base case: insert the value at this key
-            map.insert(parts[0].to_string(), value);
+            map.insert(parts[0].clone(), value);
             return;
         }
 
         // Recursive case: get or create the nested object
-        let key = parts[0].to_string();
+        let key = parts[0].clone();
         match map.entry(key) {
             serde_json::map::Entry::Occupied(mut occ) => {
                 if let Value::Object(ref mut nested) = occ.get_mut() {
@@ -365,12 +377,7 @@ impl Environment {
 
                 if key_check.starts_with(&prefix_str) {
                     let trimmed = key_check[prefix_str.len()..].trim_start_matches(&self.separator);
-                    // Keep case for nested mode, lowercase for flat mode
-                    let key_for_map = if self.nested {
-                        trimmed.to_string()
-                    } else {
-                        trimmed.to_lowercase()
-                    };
+                    let key_for_map = self.normalize_key(trimmed);
                     flat_map.insert(key_for_map, Self::parse_env_value(&value));
                 }
             } else {
@@ -395,12 +402,7 @@ impl Environment {
 
                 if key_check.starts_with(&prefix_str) {
                     let trimmed = key_check[prefix_str.len()..].trim_start_matches(&self.separator);
-                    // Keep case for nested mode, lowercase for flat mode
-                    let key_for_map = if self.nested {
-                        trimmed.to_string()
-                    } else {
-                        trimmed.to_lowercase()
-                    };
+                    let key_for_map = self.normalize_key(trimmed);
                     flat_map.insert(key_for_map, Self::parse_env_value(override_value));
                 }
             } else {
@@ -425,9 +427,7 @@ impl Environment {
                     // Lowercase each part individually
                     let lowercase_parts: Vec<String> =
                         parts.iter().map(|p| p.to_lowercase()).collect();
-                    let lowercase_parts_refs: Vec<&str> =
-                        lowercase_parts.iter().map(|s| s.as_str()).collect();
-                    Self::insert_nested(&mut result, &lowercase_parts_refs, value);
+                    Self::insert_nested(&mut result, &lowercase_parts, value);
                 }
             } else {
                 // Keep keys flat (backward compatible behavior)
