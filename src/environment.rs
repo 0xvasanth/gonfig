@@ -285,18 +285,22 @@ impl Environment {
 
         // Recursive case: get or create the nested object
         let key = parts[0].to_string();
-        let nested_map = map
-            .entry(key.clone())
-            .or_insert_with(|| Value::Object(Map::new()));
-
-        // If the entry exists but is not an object, replace it with an object
-        if let Value::Object(ref mut nested) = nested_map {
-            Self::insert_nested(nested, &parts[1..], value);
-        } else {
-            // Replace non-object with a new object containing the nested value
-            let mut new_map = Map::new();
-            Self::insert_nested(&mut new_map, &parts[1..], value);
-            map.insert(key, Value::Object(new_map));
+        match map.entry(key) {
+            serde_json::map::Entry::Occupied(mut occ) => {
+                if let Value::Object(ref mut nested) = occ.get_mut() {
+                    Self::insert_nested(nested, &parts[1..], value);
+                } else {
+                    // Replace non-object with a new object containing the nested value
+                    let mut new_map = Map::new();
+                    Self::insert_nested(&mut new_map, &parts[1..], value);
+                    *occ.get_mut() = Value::Object(new_map);
+                }
+            }
+            serde_json::map::Entry::Vacant(vac) => {
+                let mut new_map = Map::new();
+                Self::insert_nested(&mut new_map, &parts[1..], value);
+                vac.insert(Value::Object(new_map));
+            }
         }
     }
 
