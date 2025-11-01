@@ -56,6 +56,7 @@ pub struct Environment {
     case_sensitive: bool,
     overrides: HashMap<String, String>,
     field_mappings: HashMap<String, String>,
+    nested: bool,
 }
 
 impl Default for Environment {
@@ -66,6 +67,7 @@ impl Default for Environment {
             case_sensitive: false,
             overrides: HashMap::new(),
             field_mappings: HashMap::new(),
+            nested: false,
         }
     }
 }
@@ -194,6 +196,29 @@ impl Environment {
         self
     }
 
+    /// Enable nested mode to convert flat environment variable keys into nested structures.
+    ///
+    /// When enabled, environment variables with the configured separator (default: `_`) will be split
+    /// into nested paths. For example, `APP_HTTP_PORT=9000` becomes `{"http": {"port": 9000}}`.
+    ///
+    /// This is essential for properly overriding nested configuration file values with
+    /// environment variables when using the Deep merge strategy.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use gonfig::{Environment, ConfigBuilder, MergeStrategy};
+    ///
+    /// // With nested=true, APP_HTTP_PORT will override http.port in config file
+    /// let env = Environment::new()
+    ///     .with_prefix("APP")
+    ///     .nested(true);
+    /// ```
+    pub fn nested(mut self, nested: bool) -> Self {
+        self.nested = nested;
+        self
+    }
+
     fn build_env_key(&self, path: &[&str]) -> String {
         let mut parts = Vec::new();
 
@@ -240,6 +265,43 @@ impl Environment {
         }
 
         json!(value)
+    }
+
+    /// Recursively insert a value into a nested map structure based on a path of keys.
+    ///
+    /// This helper function takes a flat key path (e.g., ["http", "server", "port"])
+    /// and creates the necessary nested structure in the map, inserting the value
+    /// at the deepest level.
+    fn insert_nested(map: &mut Map<String, Value>, parts: &[&str], value: Value) {
+        if parts.is_empty() {
+            return;
+        }
+
+        if parts.len() == 1 {
+            // Base case: insert the value at this key
+            map.insert(parts[0].to_string(), value);
+            return;
+        }
+
+        // Recursive case: get or create the nested object
+        let key = parts[0].to_string();
+        match map.entry(key) {
+            serde_json::map::Entry::Occupied(mut occ) => {
+                if let Value::Object(ref mut nested) = occ.get_mut() {
+                    Self::insert_nested(nested, &parts[1..], value);
+                } else {
+                    // Replace non-object with a new object containing the nested value
+                    let mut new_map = Map::new();
+                    Self::insert_nested(&mut new_map, &parts[1..], value);
+                    *occ.get_mut() = Value::Object(new_map);
+                }
+            }
+            serde_json::map::Entry::Vacant(vac) => {
+                let mut new_map = Map::new();
+                Self::insert_nested(&mut new_map, &parts[1..], value);
+                vac.insert(Value::Object(new_map));
+            }
+        }
     }
 
     pub fn collect_for_struct(
@@ -303,7 +365,13 @@ impl Environment {
 
                 if key_check.starts_with(&prefix_str) {
                     let trimmed = key_check[prefix_str.len()..].trim_start_matches(&self.separator);
-                    flat_map.insert(trimmed.to_lowercase(), Self::parse_env_value(&value));
+                    // Keep case for nested mode, lowercase for flat mode
+                    let key_for_map = if self.nested {
+                        trimmed.to_string()
+                    } else {
+                        trimmed.to_lowercase()
+                    };
+                    flat_map.insert(key_for_map, Self::parse_env_value(&value));
                 }
             } else {
                 flat_map.insert(key.to_lowercase(), Self::parse_env_value(&value));
@@ -327,10 +395,13 @@ impl Environment {
 
                 if key_check.starts_with(&prefix_str) {
                     let trimmed = key_check[prefix_str.len()..].trim_start_matches(&self.separator);
-                    flat_map.insert(
-                        trimmed.to_lowercase(),
-                        Self::parse_env_value(override_value),
-                    );
+                    // Keep case for nested mode, lowercase for flat mode
+                    let key_for_map = if self.nested {
+                        trimmed.to_string()
+                    } else {
+                        trimmed.to_lowercase()
+                    };
+                    flat_map.insert(key_for_map, Self::parse_env_value(override_value));
                 }
             } else {
                 flat_map.insert(
@@ -340,10 +411,28 @@ impl Environment {
             }
         }
 
-        // Keep keys flat (don't create nested structure)
+        // Convert flat keys into nested structures if enabled
         let mut result = Map::new();
         for (key, value) in flat_map {
-            result.insert(key, value);
+            if self.nested {
+                // Split on separator to create nested structure
+                let parts: Vec<&str> = key.split(&self.separator).collect();
+                if parts.len() == 1 {
+                    // Single part, insert directly (lowercase it)
+                    result.insert(key.to_lowercase(), value);
+                } else {
+                    // Multiple parts, create nested structure
+                    // Lowercase each part individually
+                    let lowercase_parts: Vec<String> =
+                        parts.iter().map(|p| p.to_lowercase()).collect();
+                    let lowercase_parts_refs: Vec<&str> =
+                        lowercase_parts.iter().map(|s| s.as_str()).collect();
+                    Self::insert_nested(&mut result, &lowercase_parts_refs, value);
+                }
+            } else {
+                // Keep keys flat (backward compatible behavior)
+                result.insert(key.to_lowercase(), value);
+            }
         }
 
         Ok(Value::Object(result))
