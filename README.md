@@ -16,6 +16,7 @@ A unified configuration management library for Rust that seamlessly integrates e
 - **✅ Validation**: Built-in validation support for your configurations
 - **⚙️ Granular Control**: Enable/disable sources at struct or field level
 - **🚫 Skip Support**: Exclude sensitive or runtime fields from configuration
+- **📊 Structured Logging**: Built-in tracing support with fine-grained control via `RUST_LOG`
 
 ## Quick Start
 
@@ -23,7 +24,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gonfig = "0.1.6"
+gonfig = "0.1.9"
 serde = { version = "1.0", features = ["derive"] }
 ```
 
@@ -52,8 +53,8 @@ fn main() -> gonfig::Result<()> {
     std::env::set_var("APP_PORT", "8080");
 
     let config = Config::from_gonfig()?;
-    println!("Database: {}", config.database_url);
-    println!("Port: {}", config.port);
+    tracing::info!("Database: {}", config.database_url);
+    tracing::info!("Port: {}", config.port);
     Ok(())
 }
 ```
@@ -289,6 +290,44 @@ mongo:
 }
 ```
 
+## Logging and Debugging
+
+Gonfig uses the `tracing` crate for structured logging. Control logging output using the `RUST_LOG` environment variable:
+
+```bash
+# Show all logs (default level: INFO)
+RUST_LOG=info cargo run --example simple
+
+# Show only errors
+RUST_LOG=error cargo run --example simple
+
+# Show debug information
+RUST_LOG=debug cargo run --example simple
+
+# Show trace-level details
+RUST_LOG=trace cargo run --example simple
+```
+
+All examples include tracing initialization:
+
+```rust
+use tracing_subscriber::EnvFilter;
+
+fn main() -> gonfig::Result<()> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::from_default_env()
+                .add_directive(tracing::Level::INFO.into())
+        )
+        .init();
+
+    // Your code here...
+}
+```
+
+This gives you fine-grained control over logging output without cluttering your application logs.
+
 ## Examples
 
 See the [examples/](examples/) directory for more comprehensive examples:
@@ -300,8 +339,14 @@ See the [examples/](examples/) directory for more comprehensive examples:
 
 Run examples:
 ```bash
+# Run with default logging (INFO level)
 cargo run --example your_usecase
-cargo run --example skip_attributes
+
+# Run with debug logging
+RUST_LOG=debug cargo run --example skip_attributes
+
+# Run silently (errors only)
+RUST_LOG=error cargo run --example simple
 ```
 
 ## Error Handling
@@ -312,12 +357,12 @@ Gonfig provides detailed error types:
 use gonfig::Error;
 
 match config_result {
-    Err(Error::Environment(msg)) => eprintln!("Environment error: {}", msg),
-    Err(Error::Config(msg)) => eprintln!("Config file error: {}", msg),
-    Err(Error::Cli(msg)) => eprintln!("CLI error: {}", msg),
-    Err(Error::Validation(msg)) => eprintln!("Validation error: {}", msg),
-    Err(Error::Serialization(msg)) => eprintln!("Serialization error: {}", msg),
-    Ok(config) => println!("Config loaded successfully: {:?}", config),
+    Err(Error::Environment(msg)) => tracing::error!("Environment error: {}", msg),
+    Err(Error::Config(msg)) => tracing::error!("Config file error: {}", msg),
+    Err(Error::Cli(msg)) => tracing::error!("CLI error: {}", msg),
+    Err(Error::Validation(msg)) => tracing::error!("Validation error: {}", msg),
+    Err(Error::Serialization(msg)) => tracing::error!("Serialization error: {}", msg),
+    Ok(config) => tracing::info!("Config loaded successfully: {:?}", config),
 }
 ```
 
