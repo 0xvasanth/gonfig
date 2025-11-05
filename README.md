@@ -156,20 +156,20 @@ struct Config {
 
 ### Struct-level Attributes
 
-| Attribute | Description | Example |
-|-----------|-------------|---------|
+| Attribute               | Description                     | Example                         |
+| ----------------------- | ------------------------------- | ------------------------------- |
 | `env_prefix = "PREFIX"` | Set environment variable prefix | `#[Gonfig(env_prefix = "APP")]` |
-| `allow_cli` | Enable CLI argument support | `#[Gonfig(allow_cli)]` |
-| `allow_config` | Enable config file support | `#[Gonfig(allow_config)]` |
+| `allow_cli`             | Enable CLI argument support     | `#[Gonfig(allow_cli)]`          |
+| `allow_config`          | Enable config file support      | `#[Gonfig(allow_config)]`       |
 
 ### Field-level Attributes
 
-| Attribute | Description | Example |
-|-----------|-------------|---------|
-| `env_name = "NAME"` | Override environment variable name | `#[gonfig(env_name = "DB_URL")]` |
-| `cli_name = "name"` | Override CLI argument name | `#[gonfig(cli_name = "database-url")]` |
-| `#[skip]` | Skip field from all sources | `#[skip]` |
-| `#[skip_gonfig]` | Alternative skip syntax | `#[skip_gonfig]` |
+| Attribute           | Description                        | Example                                |
+| ------------------- | ---------------------------------- | -------------------------------------- |
+| `env_name = "NAME"` | Override environment variable name | `#[gonfig(env_name = "DB_URL")]`       |
+| `cli_name = "name"` | Override CLI argument name         | `#[gonfig(cli_name = "database-url")]` |
+| `#[skip]`           | Skip field from all sources        | `#[skip]`                              |
+| `#[skip_gonfig]`    | Alternative skip syntax            | `#[skip_gonfig]`                       |
 
 ## Skip Attributes
 
@@ -258,6 +258,7 @@ ConfigBuilder::new()
 Gonfig supports multiple config file formats:
 
 ### TOML
+
 ```toml
 # config.toml
 database_url = "postgres://localhost/prod"
@@ -269,6 +270,7 @@ password = "secret"
 ```
 
 ### YAML
+
 ```yaml
 # config.yaml
 database_url: postgres://localhost/prod
@@ -279,6 +281,7 @@ mongo:
 ```
 
 ### JSON
+
 ```json
 {
   "database_url": "postgres://localhost/prod",
@@ -328,27 +331,6 @@ fn main() -> gonfig::Result<()> {
 
 This gives you fine-grained control over logging output without cluttering your application logs.
 
-## Examples
-
-See the [examples/](examples/) directory for more comprehensive examples:
-
-- [`your_usecase.rs`](examples/your_usecase.rs) - Your exact use case implementation
-- [`skip_attributes.rs`](examples/skip_attributes.rs) - Comprehensive skip examples
-- [`madara_usecase.rs`](examples/madara_usecase.rs) - Complex hierarchical configuration
-- [`simple.rs`](examples/simple.rs) - Basic usage example
-
-Run examples:
-```bash
-# Run with default logging (INFO level)
-cargo run --example your_usecase
-
-# Run with debug logging
-RUST_LOG=debug cargo run --example skip_attributes
-
-# Run silently (errors only)
-RUST_LOG=error cargo run --example simple
-```
-
 ## Error Handling
 
 Gonfig provides detailed error types:
@@ -372,9 +354,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under either of
-
- * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or https://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or https://opensource.org/licenses/MIT)
-
-at your option.# gonfig
+- MIT license ([LICENSE](LICENSE) or https://opensource.org/licenses/MIT)
