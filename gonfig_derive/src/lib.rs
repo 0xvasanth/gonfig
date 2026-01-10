@@ -484,13 +484,17 @@ fn generate_gonfig_impl(opts: &GonfigOpts) -> proc_macro2::TokenStream {
                         let #nested_field_names = <#nested_field_types>::from_gonfig_with_parent_prefix(&composed_prefix)?;
                     )*
 
-                    // Build config value for regular fields
+                    // Build config value for regular fields (excluding nested fields to avoid conflicts)
                     let mut config_value = builder.build_value()?;
 
-                    // Don't add nested fields to the config_value - let serde use Default for them
-                    // This requires nested field types to have #[serde(default)] at struct or field level
+                    // Remove nested fields from config_value to avoid conflicts with regular field mapping
+                    if let ::serde_json::Value::Object(ref mut map) = config_value {
+                        #(
+                            map.remove(stringify!(#nested_field_names));
+                        )*
+                    }
 
-                    // Deserialize into Self, nested fields will use Default temporarily
+                    // Deserialize into Self with nested fields temporarily set to default
                     let mut result: Self = ::serde_json::from_value(config_value)
                         .map_err(|e| ::gonfig::Error::Serialization(
                             format!("Failed to deserialize config: {}", e)
