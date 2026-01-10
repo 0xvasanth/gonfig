@@ -46,6 +46,11 @@ struct GonfigField {
     #[darling(default)]
     flatten: bool,
 
+    // Reserved for future use (nested configuration feature)
+    #[allow(dead_code)]
+    #[darling(default)]
+    nested: bool,
+
     #[darling(default)]
     default: Option<String>,
 }
@@ -145,6 +150,35 @@ struct GonfigField {
 ///
 ///     #[gonfig(default = r#"["localhost"]"#)]
 ///     allowed_hosts: Vec<String>,
+/// }
+/// ```
+///
+/// ## `#[gonfig(nested)]`
+/// **[Experimental]** Marks a field as a nested configuration struct.
+///
+/// Currently, nested fields must be manually constructed. This attribute prevents
+/// the field from being loaded with the parent config.
+///
+/// **Example:**
+/// ```rust,ignore
+/// #[derive(Gonfig, Deserialize)]
+/// #[Gonfig(env_prefix = "APP")]
+/// struct Config {
+///     #[gonfig(nested)]
+///     server: ServerConfig,
+/// }
+///
+/// #[derive(Gonfig, Deserialize)]
+/// #[Gonfig(env_prefix = "SERVER")]
+/// struct ServerConfig {
+///     host: String,
+/// }
+///
+/// // Manual construction (automatic loading coming in future version):
+/// fn load_config() -> Result<Config> {
+///     let server = ServerConfig::from_gonfig()?;
+///     // Manually combine with parent struct
+///     Ok(Config { server })
 /// }
 /// ```
 ///
@@ -260,6 +294,12 @@ fn generate_gonfig_impl(opts: &GonfigOpts) -> proc_macro2::TokenStream {
         let field_name = f.ident.as_ref().unwrap();
         let field_str = field_name.to_string();
 
+        // Skip nested fields - they should be loaded separately
+        // TODO: Implement automatic nested struct loading with prefix composition
+        if f.nested {
+            continue;
+        }
+
         // Note: flatten feature is not yet fully implemented
         // For now, treat all fields as regular fields
         {
@@ -338,19 +378,20 @@ fn generate_gonfig_impl(opts: &GonfigOpts) -> proc_macro2::TokenStream {
 
                 if #allow_config {
                     // Config file support - check for default config files
-                    use std::path::Path;
+                    // Note: Using fully qualified paths to avoid conflicts with user's std/core aliases
+                    // See: https://github.com/0xvasanth/gonfig/issues/23
 
-                    if Path::new("config.toml").exists() {
+                    if ::std::path::Path::new("config.toml").exists() {
                         builder = match builder.with_file("config.toml") {
                             Ok(b) => b,
                             Err(e) => return Err(e),
                         };
-                    } else if Path::new("config.yaml").exists() {
+                    } else if ::std::path::Path::new("config.yaml").exists() {
                         builder = match builder.with_file("config.yaml") {
                             Ok(b) => b,
                             Err(e) => return Err(e),
                         };
-                    } else if Path::new("config.json").exists() {
+                    } else if ::std::path::Path::new("config.json").exists() {
                         builder = match builder.with_file("config.json") {
                             Ok(b) => b,
                             Err(e) => return Err(e),
