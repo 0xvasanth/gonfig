@@ -154,33 +154,59 @@ struct GonfigField {
 /// ```
 ///
 /// ## `#[gonfig(nested)]`
-/// **[Experimental]** Marks a field as a nested configuration struct.
+/// Marks a field as a nested configuration struct that should be loaded automatically.
 ///
-/// Currently, nested fields must be manually constructed. This attribute prevents
-/// the field from being loaded with the parent config.
+/// When a field is marked as nested, the macro automatically calls that field type's
+/// `from_gonfig()` method, allowing you to compose configuration from multiple structs
+/// with their own prefixes and loading logic.
+///
+/// **Requirements:**
+/// - Nested field types must derive `Gonfig`
+/// - Nested field types must implement `Default` or have `#[serde(default)]`
+/// - Parent struct must mark nested fields with `#[serde(default)]`
 ///
 /// **Example:**
 /// ```rust,ignore
-/// #[derive(Gonfig, Deserialize)]
-/// #[Gonfig(env_prefix = "APP")]
-/// struct Config {
-///     #[gonfig(nested)]
-///     server: ServerConfig,
-/// }
+/// use gonfig::Gonfig;
+/// use serde::{Deserialize, Serialize};
 ///
-/// #[derive(Gonfig, Deserialize)]
+/// #[derive(Debug, Deserialize, Gonfig)]
 /// #[Gonfig(env_prefix = "SERVER")]
+/// #[serde(default)]
 /// struct ServerConfig {
+///     #[gonfig(default = "127.0.0.1")]
 ///     host: String,
+///
+///     #[gonfig(default = "8080")]
+///     port: u16,
 /// }
 ///
-/// // Manual construction (automatic loading coming in future version):
-/// fn load_config() -> Result<Config> {
-///     let server = ServerConfig::from_gonfig()?;
-///     // Manually combine with parent struct
-///     Ok(Config { server })
+/// impl Default for ServerConfig {
+///     fn default() -> Self {
+///         Self { host: String::new(), port: 0 }
+///     }
 /// }
+///
+/// #[derive(Debug, Deserialize, Gonfig)]
+/// #[Gonfig(env_prefix = "APP")]
+/// struct AppConfig {
+///     #[gonfig(nested)]
+///     #[serde(default)]  // Required for nested fields
+///     server: ServerConfig,
+///
+///     #[gonfig(default = "production")]
+///     environment: String,
+/// }
+///
+/// // Automatic loading - ServerConfig loads with SERVER_ prefix
+/// let config = AppConfig::from_gonfig()?;
+/// println!("Server: {}:{}", config.server.host, config.server.port);
 /// ```
+///
+/// **Environment Variables:**
+/// - `APP_ENVIRONMENT` → AppConfig.environment
+/// - `SERVER_HOST` → ServerConfig.host (nested struct uses its own prefix)
+/// - `SERVER_PORT` → ServerConfig.port
 ///
 /// ## `#[skip]` or `#[skip_gonfig]`
 /// Exclude a field from configuration loading. Useful for non-serializable fields or
@@ -286,19 +312,25 @@ fn generate_gonfig_impl(opts: &GonfigOpts) -> proc_macro2::TokenStream {
         .expect("Only structs are supported")
         .fields;
 
-    // Separate regular fields from flattened fields
+    // Separate regular fields from nested fields
     let mut regular_mappings = Vec::new();
     let mut default_mappings = Vec::new();
+    let mut nested_fields = Vec::new();
+    let mut all_fields = Vec::new(); // Track all fields for manual construction
 
     for f in fields.iter().filter(|f| !f.skip_gonfig && !f.skip) {
         let field_name = f.ident.as_ref().unwrap();
         let field_str = field_name.to_string();
+        let field_type = &f.ty;
 
-        // Skip nested fields - they should be loaded separately
-        // TODO: Implement automatic nested struct loading with prefix composition
+        // Collect nested fields for automatic loading
         if f.nested {
+            nested_fields.push((field_name.clone(), field_type.clone()));
+            all_fields.push((field_name.clone(), true)); // Mark as nested
             continue;
         }
+
+        all_fields.push((field_name.clone(), false)); // Mark as regular
 
         // Note: flatten feature is not yet fully implemented
         // For now, treat all fields as regular fields
@@ -334,6 +366,11 @@ fn generate_gonfig_impl(opts: &GonfigOpts) -> proc_macro2::TokenStream {
             }
         }
     }
+
+    // Prepare nested field names and types for code generation
+    let has_nested = !nested_fields.is_empty();
+    let nested_field_names: Vec<_> = nested_fields.iter().map(|(name, _)| name).collect();
+    let nested_field_types: Vec<_> = nested_fields.iter().map(|(_, ty)| ty).collect();
 
     quote! {
         impl #impl_generics #name #ty_generics #where_clause {
@@ -411,8 +448,36 @@ fn generate_gonfig_impl(opts: &GonfigOpts) -> proc_macro2::TokenStream {
                     builder = builder.with_defaults(::serde_json::Value::Object(defaults_json))?;
                 }
 
-                // Build the final configuration with explicit type
-                builder.build::<Self>()
+                // Build the final configuration
+                if #has_nested {
+                    // Struct has nested fields - load them automatically
+                    // Note: Nested fields must have #[serde(default)] or fields must be Option<T>
+                    #(
+                        let #nested_field_names = <#nested_field_types>::from_gonfig()?;
+                    )*
+
+                    // Build config value for regular fields
+                    let mut config_value = builder.build_value()?;
+
+                    // Don't add nested fields to the config_value - let serde use Default for them
+                    // This requires nested field types to have #[serde(default)] at struct or field level
+
+                    // Deserialize into Self, nested fields will use Default temporarily
+                    let mut result: Self = ::serde_json::from_value(config_value)
+                        .map_err(|e| ::gonfig::Error::Serialization(
+                            format!("Failed to deserialize config: {}", e)
+                        ))?;
+
+                    // Replace nested fields with loaded values
+                    #(
+                        result.#nested_field_names = #nested_field_names;
+                    )*
+
+                    Ok(result)
+                } else {
+                    // No nested fields - use simple deserialization
+                    builder.build::<Self>()
+                }
             }
 
             pub fn gonfig_builder() -> ::gonfig::ConfigBuilder {
