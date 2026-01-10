@@ -335,18 +335,6 @@ fn generate_gonfig_impl(opts: &GonfigOpts) -> proc_macro2::TokenStream {
         // Note: flatten feature is not yet fully implemented
         // For now, treat all fields as regular fields
         {
-            // Generate expected environment variable name
-            let env_key = if let Some(custom_name) = &f.env_name {
-                // Use custom name directly if provided
-                custom_name.clone()
-            } else if !env_prefix.is_empty() {
-                // Use prefix + field name pattern
-                format!("{}_{}", env_prefix, field_str.to_uppercase())
-            } else {
-                // Just field name in uppercase
-                field_str.to_uppercase()
-            };
-
             // Generate CLI argument name (kebab-case)
             let cli_key = if let Some(custom_name) = &f.cli_name {
                 custom_name.clone()
@@ -354,8 +342,20 @@ fn generate_gonfig_impl(opts: &GonfigOpts) -> proc_macro2::TokenStream {
                 field_str.replace('_', "-")
             };
 
+            // Store field info for runtime env key computation
+            // We can't pre-compute env_key because it depends on composed_prefix
+            let custom_env_opt = if let Some(custom) = &f.env_name {
+                quote! { Some(#custom.to_string()) }
+            } else {
+                quote! { None }
+            };
+
             regular_mappings.push(quote! {
-                (#field_str.to_string(), #env_key.to_string(), #cli_key.to_string())
+                (
+                    #field_str.to_string(),
+                    #custom_env_opt,
+                    #cli_key.to_string()
+                )
             });
 
             // Handle default values
@@ -375,12 +375,32 @@ fn generate_gonfig_impl(opts: &GonfigOpts) -> proc_macro2::TokenStream {
     quote! {
         impl #impl_generics #name #ty_generics #where_clause {
             pub fn from_gonfig() -> ::gonfig::Result<Self> {
-                Self::from_gonfig_with_builder(::gonfig::ConfigBuilder::new())
+                Self::from_gonfig_with_parent_prefix("")
             }
 
-            pub fn from_gonfig_with_builder(mut builder: ::gonfig::ConfigBuilder) -> ::gonfig::Result<Self> {
-                // Regular field mappings: (field_name, env_key, cli_key)
-                let field_mappings: Vec<(String, String, String)> = vec![#(#regular_mappings),*];
+            /// Load configuration with a parent prefix for hierarchical composition.
+            /// When used as a nested config, the parent prefix is automatically prepended.
+            pub fn from_gonfig_with_parent_prefix(parent_prefix: &str) -> ::gonfig::Result<Self> {
+                Self::from_gonfig_with_builder_and_parent(::gonfig::ConfigBuilder::new(), parent_prefix)
+            }
+
+            pub fn from_gonfig_with_builder(builder: ::gonfig::ConfigBuilder) -> ::gonfig::Result<Self> {
+                Self::from_gonfig_with_builder_and_parent(builder, "")
+            }
+
+            fn from_gonfig_with_builder_and_parent(mut builder: ::gonfig::ConfigBuilder, parent_prefix: &str) -> ::gonfig::Result<Self> {
+                // Compose prefix: parent_prefix + current env_prefix
+                let composed_prefix = if parent_prefix.is_empty() {
+                    #env_prefix.to_string()
+                } else if #env_prefix.is_empty() {
+                    parent_prefix.to_string()
+                } else {
+                    format!("{}_{}", parent_prefix, #env_prefix)
+                };
+
+                // Regular field mappings: (field_name, custom_env_name, cli_key)
+                // env_key will be computed at runtime using composed_prefix
+                let field_mappings: Vec<(String, Option<String>, String)> = vec![#(#regular_mappings),*];
 
                 // Default value mappings: (field_name, default_value)
                 let default_values: Vec<(String, String)> = vec![#(#default_mappings),*];
@@ -389,13 +409,21 @@ fn generate_gonfig_impl(opts: &GonfigOpts) -> proc_macro2::TokenStream {
                     // Create custom environment source with field mappings
                     let mut env = ::gonfig::Environment::new();
 
-                    if !#env_prefix.is_empty() {
-                        env = env.with_prefix(#env_prefix);
+                    if !composed_prefix.is_empty() {
+                        env = env.with_prefix(&composed_prefix);
                     }
 
                     // Apply field-level mappings for regular fields
-                    for (field_name, env_key, _cli_key) in &field_mappings {
-                        env = env.with_field_mapping(field_name, env_key);
+                    // Compute env_key at runtime using composed_prefix
+                    for (field_name, custom_env_name, _cli_key) in &field_mappings {
+                        let env_key = if let Some(custom) = custom_env_name {
+                            custom.clone()
+                        } else if !composed_prefix.is_empty() {
+                            format!("{}_{}", composed_prefix, field_name.to_uppercase())
+                        } else {
+                            field_name.to_uppercase()
+                        };
+                        env = env.with_field_mapping(field_name, &env_key);
                     }
 
                     builder = builder.with_env_custom(env);
@@ -406,7 +434,7 @@ fn generate_gonfig_impl(opts: &GonfigOpts) -> proc_macro2::TokenStream {
                     let mut cli = ::gonfig::Cli::from_args();
 
                     // Apply field-level CLI mappings for regular fields
-                    for (field_name, _env_key, cli_key) in &field_mappings {
+                    for (field_name, _custom_env_name, cli_key) in &field_mappings {
                         cli = cli.with_field_mapping(field_name, cli_key);
                     }
 
@@ -450,10 +478,10 @@ fn generate_gonfig_impl(opts: &GonfigOpts) -> proc_macro2::TokenStream {
 
                 // Build the final configuration
                 if #has_nested {
-                    // Struct has nested fields - load them automatically
-                    // Note: Nested fields must have #[serde(default)] or fields must be Option<T>
+                    // Struct has nested fields - load them automatically with composed prefix
+                    // Each nested struct inherits and composes the parent's prefix
                     #(
-                        let #nested_field_names = <#nested_field_types>::from_gonfig()?;
+                        let #nested_field_names = <#nested_field_types>::from_gonfig_with_parent_prefix(&composed_prefix)?;
                     )*
 
                     // Build config value for regular fields
@@ -483,20 +511,30 @@ fn generate_gonfig_impl(opts: &GonfigOpts) -> proc_macro2::TokenStream {
             pub fn gonfig_builder() -> ::gonfig::ConfigBuilder {
                 let mut builder = ::gonfig::ConfigBuilder::new();
 
-                // Regular field mappings: (field_name, env_key, cli_key)
-                let field_mappings: Vec<(String, String, String)> = vec![#(#regular_mappings),*];
+                // Regular field mappings: (field_name, custom_env_name, cli_key)
+                let field_mappings: Vec<(String, Option<String>, String)> = vec![#(#regular_mappings),*];
+
+                // Use env_prefix directly (no parent composition in builder method)
+                let prefix = #env_prefix;
 
                 if #allow_env {
                     // Create custom environment source with field mappings
                     let mut env = ::gonfig::Environment::new();
 
-                    if !#env_prefix.is_empty() {
-                        env = env.with_prefix(#env_prefix);
+                    if !prefix.is_empty() {
+                        env = env.with_prefix(prefix);
                     }
 
                     // Apply field-level mappings for regular fields
-                    for (field_name, env_key, _cli_key) in &field_mappings {
-                        env = env.with_field_mapping(field_name, env_key);
+                    for (field_name, custom_env_name, _cli_key) in &field_mappings {
+                        let env_key = if let Some(custom) = custom_env_name {
+                            custom.clone()
+                        } else if !prefix.is_empty() {
+                            format!("{}_{}", prefix, field_name.to_uppercase())
+                        } else {
+                            field_name.to_uppercase()
+                        };
+                        env = env.with_field_mapping(field_name, &env_key);
                     }
 
                     builder = builder.with_env_custom(env);
@@ -507,7 +545,7 @@ fn generate_gonfig_impl(opts: &GonfigOpts) -> proc_macro2::TokenStream {
                     let mut cli = ::gonfig::Cli::from_args();
 
                     // Apply field-level CLI mappings for regular fields
-                    for (field_name, _env_key, cli_key) in &field_mappings {
+                    for (field_name, _custom_env_name, cli_key) in &field_mappings {
                         cli = cli.with_field_mapping(field_name, cli_key);
                     }
 

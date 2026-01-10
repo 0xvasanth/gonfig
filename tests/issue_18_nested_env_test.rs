@@ -45,6 +45,15 @@ struct PoolSettings {
 
 #[test]
 fn test_issue_18_basic_nested_override() -> Result<(), Box<dyn std::error::Error>> {
+    // Clean environment first to avoid test interference
+    env::remove_var("APP_HTTP_PORT");
+    env::remove_var("APP_DATABASE_NAME");
+    env::remove_var("APP_DATABASE_POOL_MAXSIZE");
+    env::remove_var("APP_SERVICE_VERSION");
+    env::remove_var("APP_HTTP_TIMEOUT");
+    env::remove_var("APP_DATABASE_HOST");
+    env::remove_var("APP_DATABASE_POOL_MINSIZE");
+
     // Create temp config file with nested structure
     let mut file = NamedTempFile::new()?;
     writeln!(
@@ -102,6 +111,15 @@ database:
 
 #[test]
 fn test_issue_18_deep_nested_override() -> Result<(), Box<dyn std::error::Error>> {
+    // Clean environment first to avoid test interference
+    env::remove_var("APP_HTTP_PORT");
+    env::remove_var("APP_DATABASE_NAME");
+    env::remove_var("APP_DATABASE_POOL_MAXSIZE");
+    env::remove_var("APP_SERVICE_VERSION");
+    env::remove_var("APP_HTTP_TIMEOUT");
+    env::remove_var("APP_DATABASE_HOST");
+    env::remove_var("APP_DATABASE_POOL_MINSIZE");
+
     // Test 3-level nesting: database.pool.maxsize
     let mut file = NamedTempFile::new()?;
     writeln!(
@@ -152,6 +170,15 @@ database:
 
 #[test]
 fn test_issue_18_multiple_nested_overrides() -> Result<(), Box<dyn std::error::Error>> {
+    // Clean environment first to avoid test interference
+    env::remove_var("APP_HTTP_PORT");
+    env::remove_var("APP_DATABASE_NAME");
+    env::remove_var("APP_DATABASE_POOL_MAXSIZE");
+    env::remove_var("APP_SERVICE_VERSION");
+    env::remove_var("APP_HTTP_TIMEOUT");
+    env::remove_var("APP_DATABASE_HOST");
+    env::remove_var("APP_DATABASE_POOL_MINSIZE");
+
     // Test multiple env vars overriding different nested levels
     let mut file = NamedTempFile::new()?;
     writeln!(
