@@ -11,14 +11,16 @@ use serde::{Deserialize, Serialize};
 #[gonfig(env_prefix = "APP")]
 pub struct Config {
     #[gonfig(nested)]
+    #[serde(default)] // Required for automatic nested loading
     pub server: ServerConfig,
 
     #[gonfig(default = "production")]
     pub environment: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Gonfig)]
+#[derive(Debug, Clone, Serialize, Deserialize, Gonfig, Default)]
 #[gonfig(env_prefix = "SERVER")]
+#[serde(default)] // Allows automatic nested loading
 pub struct ServerConfig {
     #[gonfig(default = "127.0.0.1")]
     pub host: String,
@@ -51,17 +53,22 @@ mod tests {
     }
 
     #[test]
-    fn test_manual_nested_composition() {
-        // Demonstrate the current recommended pattern for nested configs
-        // (Automatic composition will be added in a future version)
+    fn test_automatic_nested_loading_with_core_alias() {
+        // **Enhancement**: As of v0.1.12, nested fields are automatically loaded!
+        // No manual composition needed anymore
 
-        let server = ServerConfig::from_gonfig().expect("Server config should load");
-        let config = Config {
-            server,
-            environment: "production".to_string(),
-        };
+        let config = Config::from_gonfig();
+        assert!(
+            config.is_ok(),
+            "Config with nested fields should load automatically: {:?}",
+            config.err()
+        );
 
+        let config = config.unwrap();
+
+        // Nested struct was loaded automatically via ServerConfig::from_gonfig()
         assert_eq!(config.server.host, "127.0.0.1");
+        assert_eq!(config.server.port, 3000);
         assert_eq!(config.environment, "production");
     }
 }
