@@ -233,7 +233,7 @@ dependencies = [
 
 [[package]]
 name = "gonfig"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "clap",
  "gonfig_derive",
@@ -251,7 +251,7 @@ dependencies = [
 
 [[package]]
 name = "gonfig_derive"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "darling",
  "proc-macro2",
